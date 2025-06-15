@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BODYBOOM SPINNING 자리 예약</title>
+  <style>
+    #container {
+      max-width: 400px;
+      margin: 20px auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      min-width: 300px;
+    }
+    .seat, .special {
+      width: 50px;
+      height: 50px;
+      background-color: #eee;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      user-select: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    .seat.reserved {
+      background-color: #4caf50;
+      color: white;
+    }
+    .special {
+      background-color: #999;
+      color: white;
+      cursor: default;
+    }
+    table {
+      margin: 30px auto;
+      width: 90%;
+      max-width: 500px;
+      border-collapse: collapse;
+      text-align: center;
+      font-size: 0.8rem;
+      table-layout: fixed;
+    }
+    table, th, td {
+      border: 1px solid #444;
+    }
+    th, td {
+      padding: 6px 8px;
+      word-break: keep-all;
+      white-space: nowrap;
+    }
+    thead {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+  <h2 style="text-align:center;">
+    BODYBOOM SPINNING<br />자리 예약
+  </h2>
+  <div id="container"></div>
+
+  <script>
+    const container = document.getElementById("container");
+
+    const seatRows = [
+      [1, 2, 3, 4, 5],
+      [6, 7, 8, 9, 10, 11],
+      [12, 13, 14, 15, 16, 17],
+      [18, 19, 20, 21, 22]
+    ];
+
+    function checkReservationAllowed() {
+      return true; // 테스트용으로 항상 true
+    }
+
+    function reserveSeat(div) {
+      if(div.classList.contains("reserved")) {
+        const inputPw = prompt("예약 취소를 위해 비밀번호 4자리를 입력하세요:");
+        if(inputPw === div.dataset.pw) {
+          if(sessionStorage.getItem("reservedName") === div.dataset.name) {
+            sessionStorage.removeItem("reservedName");
+          }
+          div.textContent = div.dataset.number;
+          div.classList.remove("reserved");
+          delete div.dataset.name;
+          delete div.dataset.pw;
+          alert("예약이 취소되었습니다.");
+        } else {
+          alert("비밀번호가 틀렸습니다.");
+        }
+        return;
+      }
+
+      if(!checkReservationAllowed()) {
+        alert("지금은 예약 시간이 아니에요.");
+        return;
+      }
+
+      if(sessionStorage.getItem("reservedName")) {
+        alert("이미 예약한 자리가 있습니다. 한 사람당 한 자리만 예약 가능합니다.");
+        return;
+      }
+
+      const name = prompt("예약자 이름을 입력하세요:");
+      if(!name) return alert("이름을 입력해야 예약할 수 있습니다.");
+
+      const seats = document.querySelectorAll(".seat.reserved");
+      for(const seat of seats) {
+        if(seat.dataset.name === name) {
+          alert("이미 예약하신 자리가 있습니다.");
+          return;
+        }
+      }
+
+      let pw;
+      do {
+        pw = prompt("예약 비밀번호 4자리를 숫자로 입력하세요:");
+        if(pw === null) return alert("비밀번호를 입력해야 예약할 수 있습니다.");
+      } while(!/^\d{4}$/.test(pw));
+
+      div.textContent = name;
+      div.dataset.name = name;
+      div.dataset.pw = pw;
+      div.classList.add("reserved");
+
+      sessionStorage.setItem("reservedName", name);
+
+      alert("예약이 완료되었습니다.");
+    }
+
+    function createSpecialSeat(label) {
+      const div = document.createElement("div");
+      div.className = "special";
+      div.textContent = label;
+      div.title = label + " (예약 불가)";
+      div.style.cursor = "default";
+      return div;
+    }
+
+    // 강사자리 한 줄 (1칸)
+    const instructorRow = document.createElement("div");
+    instructorRow.className = "row";
+    const instructorSeat = createSpecialSeat("강사");
+    instructorRow.appendChild(instructorSeat);
+    container.appendChild(instructorRow);
+
+    // 자리 줄들
+    seatRows.forEach(row => {
+      const rowDiv = document.createElement("div");
+      rowDiv.className = "row";
+
+      row.forEach(seatNum => {
+        const seatDiv = document.createElement("div");
+        seatDiv.className = "seat";
+        seatDiv.dataset.number = seatNum;
+        seatDiv.textContent = seatNum;
+        seatDiv.addEventListener("click", () => reserveSeat(seatDiv));
+        rowDiv.appendChild(seatDiv);
+      });
+
+      container.appendChild(rowDiv);
+    });
+  </script>
+
+  <table>
+    <thead>
+      <tr>
+        <th>시간</th>
+        <th>월</th>
+        <th>화</th>
+        <th>수</th>
+        <th>목</th>
+        <th>금</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>오전</td>
+        <td>10시</td>
+        <td>10시</td>
+        <td>10시</td>
+        <td>10시</td>
+        <td>10시</td>
+      </tr>
+      <tr>
+        <td>오후</td>
+        <td>7시 30분</td>
+        <td>8시 30분</td>
+        <td>7시 30분</td>
+        <td>8시 30분</td>
+        <td>7시 30분</td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>
+</html>
