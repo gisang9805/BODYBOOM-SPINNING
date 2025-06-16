@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -6,6 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BODYBOOM SPINNING 자리 예약</title>
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff;
+      color: #000;
+      margin: 0;
+      padding: 0;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      margin-top: 20px;
+    }
+
+    #countdown {
+      text-align: center;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #d32f2f;
+    }
+
     #container {
       max-width: 400px;
       margin: 20px auto;
@@ -14,13 +35,15 @@
       gap: 15px;
       align-items: center;
     }
+
     .row {
       display: flex;
       gap: 10px;
       justify-content: center;
       min-width: 300px;
     }
-    .seat, .special {
+
+    .seat {
       width: 50px;
       height: 50px;
       background-color: #eee;
@@ -33,178 +56,224 @@
       user-select: none;
       cursor: pointer;
       transition: background-color 0.3s;
+      position: relative;
     }
+
     .seat.reserved {
       background-color: #4caf50;
       color: white;
     }
-    .special {
-      background-color: #999;
+
+    .seat.disabled {
+      background-color: #f44336 !important;
       color: white;
-      cursor: default;
     }
+
     table {
-      margin: 30px auto;
-      width: 90%;
-      max-width: 500px;
       border-collapse: collapse;
-      text-align: center;
-      font-size: 0.8rem;
-      table-layout: fixed;
+      margin: 20px auto;
+      font-size: 0.75rem;
     }
-    table, th, td {
-      border: 1px solid #444;
-    }
+
     th, td {
-      padding: 6px 8px;
-      word-break: keep-all;
+      border: 1px solid #333;
+      padding: 4px 6px;
+      text-align: center;
       white-space: nowrap;
     }
-    thead {
-      background-color: #f0f0f0;
+
+    #notice {
+      margin: 20px;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+
+    #notice ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    #notice li {
+      margin: 5px 0;
+    }
+
+    #clearTimeNotice {
+      text-align: center;
+      font-size: 1rem;
+      color: #555;
+      margin: 10px 0 20px 0;
+      font-weight: 600;
+    }
+
+    /* 인증 UI 스타일 */
+    #phone-auth-container {
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    #phone-auth-container input {
+      width: 80%;
+      padding: 8px;
+      margin: 8px 0;
+      font-size: 1rem;
+    }
+
+    #phone-auth-container button {
+      padding: 10px 15px;
+      font-size: 1rem;
+      margin: 8px;
+      cursor: pointer;
+    }
+
+    #auth-status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #d32f2f;
     }
   </style>
 </head>
 <body>
 
-  <h2 style="text-align:center;">
-    BODYBOOM SPINNING<br />자리 예약
-  </h2>
-  <div id="container"></div>
+  <!-- 인증 UI -->
+  <div id="phone-auth-container">
+    <h3>휴대폰 번호 인증</h3>
+    <input type="tel" id="phone-number" placeholder="+8210xxxxxxx" />
+    <div id="recaptcha-container"></div>
+    <button id="send-code-btn">인증번호 받기</button>
+
+    <div id="verification-code-container" style="display:none;">
+      <input type="text" id="verification-code" placeholder="인증번호 입력" />
+      <button id="verify-code-btn">인증번호 확인</button>
+    </div>
+
+    <div id="auth-status"></div>
+  </div>
+
+  <!-- 예약 UI -->
+  <div id="reservation-container" style="display:none;">
+    <h2>BODYBOOM SPINNING<br />자리 예약</h2>
+    <div id="countdown"></div>
+    <div id="container"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>수업시간</th>
+          <th>월</th>
+          <th>화</th>
+          <th>수</th>
+          <th>목</th>
+          <th>금</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>오전</td>
+          <td>10시</td>
+          <td>10시</td>
+          <td>10시</td>
+          <td>10시</td>
+          <td>10시</td>
+        </tr>
+        <tr>
+          <td>오후</td>
+          <td>7시 30분</td>
+          <td>8시 30분</td>
+          <td>7시 30분</td>
+          <td>8시 30분</td>
+          <td>7시 30분</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="notice">
+      <ul>
+        <li>스피닝 자리예약은 수업 30분 전부터 가능합니다.</li>
+        <li>수업시간에 늦을 경우 빈자리에 착석 가능합니다.</li>
+        <li>--------------------------------------</li>
+        <li>예약 프로그램에 문제가 있는 경우</li>
+        <li>최기상 트레이너에게 말씀해주세요!!</li>
+      </ul>
+    </div>
+
+    <div id="clearTimeNotice">
+      예약 초기화 시간: 오전 11시 30분, 오후 9시 30분
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <script>
-    const container = document.getElementById("container");
+    const firebaseConfig = {
+      apiKey: "AIzaSyB9v97oeQISiV1P3k6EeFl_n0zeRv-aMsE",
+      authDomain: "spinning-120fe.firebaseapp.com",
+      projectId: "spinning-120fe",
+      storageBucket: "spinning-120fe.appspot.com",
+      messagingSenderId: "246146727087",
+      appId: "1:246146727087:web:94ae386984114c478c285a",
+      measurementId: "G-KX06T2G2E2"
+    };
 
-    const seatRows = [
-      [1, 2, 3, 4, 5],
-      [6, 7, 8, 9, 10, 11],
-      [12, 13, 14, 15, 16, 17],
-      [18, 19, 20, 21, 22]
-    ];
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    function checkReservationAllowed() {
-      return true; // 테스트용으로 항상 true
-    }
+    // 허용된 번호 리스트 - +82 국가번호 포함한 형식으로 입력하세요
+    const allowedPhones = ['+821012345678', '+821098765432']; // 실제 허용할 번호로 변경해주세요!
 
-    function reserveSeat(div) {
-      if(div.classList.contains("reserved")) {
-        const inputPw = prompt("예약 취소를 위해 비밀번호 4자리를 입력하세요:");
-        if(inputPw === div.dataset.pw) {
-          if(sessionStorage.getItem("reservedName") === div.dataset.name) {
-            sessionStorage.removeItem("reservedName");
-          }
-          div.textContent = div.dataset.number;
-          div.classList.remove("reserved");
-          delete div.dataset.name;
-          delete div.dataset.pw;
-          alert("예약이 취소되었습니다.");
-        } else {
-          alert("비밀번호가 틀렸습니다.");
-        }
-        return;
+    const phoneAuthContainer = document.getElementById('phone-auth-container');
+    const reservationContainer = document.getElementById('reservation-container');
+    const sendCodeBtn = document.getElementById('send-code-btn');
+    const verifyCodeBtn = document.getElementById('verify-code-btn');
+    const phoneNumberInput = document.getElementById('phone-number');
+    const verificationCodeInput = document.getElementById('verification-code');
+    const verificationCodeContainer = document.getElementById('verification-code-container');
+    const authStatus = document.getElementById('auth-status');
+
+    let confirmationResult = null;
+    let currentUserUID = null;
+
+    // reCAPTCHA 설정
+    const recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'normal',
+      callback: () => {
+        sendCodeBtn.disabled = false;
+      },
+      'expired-callback': () => {
+        sendCodeBtn.disabled = true;
       }
-
-      if(!checkReservationAllowed()) {
-        alert("지금은 예약 시간이 아니에요.");
-        return;
-      }
-
-      if(sessionStorage.getItem("reservedName")) {
-        alert("이미 예약한 자리가 있습니다. 한 사람당 한 자리만 예약 가능합니다.");
-        return;
-      }
-
-      const name = prompt("예약자 이름을 입력하세요:");
-      if(!name) return alert("이름을 입력해야 예약할 수 있습니다.");
-
-      const seats = document.querySelectorAll(".seat.reserved");
-      for(const seat of seats) {
-        if(seat.dataset.name === name) {
-          alert("이미 예약하신 자리가 있습니다.");
-          return;
-        }
-      }
-
-      let pw;
-      do {
-        pw = prompt("예약 비밀번호 4자리를 숫자로 입력하세요:");
-        if(pw === null) return alert("비밀번호를 입력해야 예약할 수 있습니다.");
-      } while(!/^\d{4}$/.test(pw));
-
-      div.textContent = name;
-      div.dataset.name = name;
-      div.dataset.pw = pw;
-      div.classList.add("reserved");
-
-      sessionStorage.setItem("reservedName", name);
-
-      alert("예약이 완료되었습니다.");
-    }
-
-    function createSpecialSeat(label) {
-      const div = document.createElement("div");
-      div.className = "special";
-      div.textContent = label;
-      div.title = label + " (예약 불가)";
-      div.style.cursor = "default";
-      return div;
-    }
-
-    // 강사자리 한 줄 (1칸)
-    const instructorRow = document.createElement("div");
-    instructorRow.className = "row";
-    const instructorSeat = createSpecialSeat("강사");
-    instructorRow.appendChild(instructorSeat);
-    container.appendChild(instructorRow);
-
-    // 자리 줄들
-    seatRows.forEach(row => {
-      const rowDiv = document.createElement("div");
-      rowDiv.className = "row";
-
-      row.forEach(seatNum => {
-        const seatDiv = document.createElement("div");
-        seatDiv.className = "seat";
-        seatDiv.dataset.number = seatNum;
-        seatDiv.textContent = seatNum;
-        seatDiv.addEventListener("click", () => reserveSeat(seatDiv));
-        rowDiv.appendChild(seatDiv);
-      });
-
-      container.appendChild(rowDiv);
     });
-  </script>
+    recaptchaVerifier.render();
 
-  <table>
-    <thead>
-      <tr>
-        <th>시간</th>
-        <th>월</th>
-        <th>화</th>
-        <th>수</th>
-        <th>목</th>
-        <th>금</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>오전</td>
-        <td>10시</td>
-        <td>10시</td>
-        <td>10시</td>
-        <td>10시</td>
-        <td>10시</td>
-      </tr>
-      <tr>
-        <td>오후</td>
-        <td>7시 30분</td>
-        <td>8시 30분</td>
-        <td>7시 30분</td>
-        <td>8시 30분</td>
-        <td>7시 30분</td>
-      </tr>
-    </tbody>
-  </table>
+    sendCodeBtn.onclick = () => {
+      const phoneNumber = phoneNumberInput.value.trim();
+      if (!phoneNumber) {
+        alert('휴대폰 번호를 입력하세요.');
+        return;
+      }
+      sendCodeBtn.disabled = true;
+      authStatus.textContent = '인증번호 전송 중...';
 
-</body>
-</html>
+      firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
+        .then((result) => {
+          confirmationResult = result;
+          authStatus.textContent = '인증번호가 전송되었습니다.';
+          verificationCodeContainer.style.display = 'block';
+        })
+        .catch((error) => {
+          console.error(error);
+          authStatus.textContent = '인증번호 전송 실패. 다시 시도해주세요.';
+          sendCodeBtn.disabled = false;
+        });
+    };
+
+    verifyCodeBtn.onclick = () => {
+      const code = verificationCodeInput.value.trim();
+      if (!code) {
+        alert('인증번호를
