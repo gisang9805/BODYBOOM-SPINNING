@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BODYBOOM SPINNING 자리 예약</title>
   <style>
-    /* 스타일 그대로 유지 */
     body {
       font-family: Arial, sans-serif;
       background: #fff;
@@ -119,6 +118,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
   <script>
+    // 페이지 진입 시 비밀번호 확인
+    const accessPw = prompt("비밀번호 4자리를 입력하세요:");
+    if (accessPw !== "0528") {
+      alert("비밀번호가 틀렸습니다. 페이지 접근이 차단됩니다.");
+      document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>접근 권한이 없습니다.</h2>";
+      throw new Error("비밀번호 오류로 페이지 접근 차단");
+    }
+
     const firebaseConfig = {
       apiKey: "AIzaSyB9v97oeQISiV1P3k6EeFl_n0zeRv-aMsE",
       authDomain: "spinning-120fe.firebaseapp.com",
@@ -320,6 +327,7 @@
         `예약 가능까지 ${hours > 0 ? hours + "시간 " : ""}${minutes}분 ${seconds}초 남았습니다`;
     }
 
+    // 오전 11:30, 오후 21:30에 예약 초기화 함수 자동 실행
     async function autoClearReservations() {
       const now = new Date();
       const day = now.getDay();
@@ -328,9 +336,11 @@
 
       if (day === 0 || day === 6) return; // 주말은 초기화 없음
 
+      // 초기화 시간 11:30 오전
       if (hour === 11 && min === 30) {
         await clearAllReservations();
       }
+      // 초기화 시간 21:30 오후
       if (hour === 21 && min === 30) {
         await clearAllReservations();
       }
@@ -386,4 +396,16 @@
     <ul>
       <li>스피닝 자리예약은 수업 30분 전부터 가능합니다.</li>
       <li>수업시간에 늦을 경우 빈자리에 착석 가능합니다.</li>
-      <li>--------------------------------
+      <li>--------------------------------------</li>
+      <li>예약 프로그램에 문제가 있는 경우</li>
+      <li>최기상 트레이너에게 말씀해주세요!!</li>
+    </ul>
+  </div>
+
+  <!-- 초기화 시간 안내 -->
+  <div id="clearTimeNotice">
+    예약 초기화 시간: 오전 11시 30분, 오후 9시 30분
+  </div>
+
+</body>
+</html>
