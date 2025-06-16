@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BODYBOOM SPINNING 자리 예약</title>
   <style>
+    /* 스타일 그대로 유지 */
     body {
       font-family: Arial, sans-serif;
       background: #fff;
@@ -104,106 +105,13 @@
       margin: 10px 0 20px 0;
       font-weight: 600;
     }
-
-    /* 인증 UI 스타일 */
-    #phone-auth-container {
-      max-width: 400px;
-      margin: 40px auto;
-      padding: 20px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      text-align: center;
-    }
-
-    #phone-auth-container input {
-      width: 80%;
-      padding: 8px;
-      margin: 8px 0;
-      font-size: 1rem;
-    }
-
-    #phone-auth-container button {
-      padding: 10px 15px;
-      font-size: 1rem;
-      margin: 8px;
-      cursor: pointer;
-    }
-
-    #auth-status {
-      margin-top: 10px;
-      font-weight: bold;
-      color: #d32f2f;
-    }
   </style>
 </head>
 <body>
 
-  <!-- 인증 UI -->
-  <div id="phone-auth-container">
-    <h3>휴대폰 번호 인증</h3>
-    <input type="tel" id="phone-number" placeholder="+8210xxxxxxx" />
-    <div id="recaptcha-container"></div>
-    <button id="send-code-btn">인증번호 받기</button>
-
-    <div id="verification-code-container" style="display:none;">
-      <input type="text" id="verification-code" placeholder="인증번호 입력" />
-      <button id="verify-code-btn">인증번호 확인</button>
-    </div>
-
-    <div id="auth-status"></div>
-  </div>
-
-  <!-- 예약 UI -->
-  <div id="reservation-container" style="display:none;">
-    <h2>BODYBOOM SPINNING<br />자리 예약</h2>
-    <div id="countdown"></div>
-    <div id="container"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>수업시간</th>
-          <th>월</th>
-          <th>화</th>
-          <th>수</th>
-          <th>목</th>
-          <th>금</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>오전</td>
-          <td>10시</td>
-          <td>10시</td>
-          <td>10시</td>
-          <td>10시</td>
-          <td>10시</td>
-        </tr>
-        <tr>
-          <td>오후</td>
-          <td>7시 30분</td>
-          <td>8시 30분</td>
-          <td>7시 30분</td>
-          <td>8시 30분</td>
-          <td>7시 30분</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div id="notice">
-      <ul>
-        <li>스피닝 자리예약은 수업 30분 전부터 가능합니다.</li>
-        <li>수업시간에 늦을 경우 빈자리에 착석 가능합니다.</li>
-        <li>--------------------------------------</li>
-        <li>예약 프로그램에 문제가 있는 경우</li>
-        <li>최기상 트레이너에게 말씀해주세요!!</li>
-      </ul>
-    </div>
-
-    <div id="clearTimeNotice">
-      예약 초기화 시간: 오전 11시 30분, 오후 9시 30분
-    </div>
-  </div>
+  <h2>BODYBOOM SPINNING<br />자리 예약</h2>
+  <div id="countdown"></div>
+  <div id="container"></div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -224,56 +132,258 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // 허용된 번호 리스트 - +82 국가번호 포함한 형식으로 입력하세요
-    const allowedPhones = ['+821012345678', '+821098765432']; // 실제 허용할 번호로 변경해주세요!
+    const container = document.getElementById("container");
+    const seatRows = [
+      [1, 2, 3, 4, 5],
+      [6, 7, 8, 9, 10, 11],
+      [12, 13, 14, 15, 16, 17],
+      [18, 19, 20, 21, 22]
+    ];
 
-    const phoneAuthContainer = document.getElementById('phone-auth-container');
-    const reservationContainer = document.getElementById('reservation-container');
-    const sendCodeBtn = document.getElementById('send-code-btn');
-    const verifyCodeBtn = document.getElementById('verify-code-btn');
-    const phoneNumberInput = document.getElementById('phone-number');
-    const verificationCodeInput = document.getElementById('verification-code');
-    const verificationCodeContainer = document.getElementById('verification-code-container');
-    const authStatus = document.getElementById('auth-status');
-
-    let confirmationResult = null;
     let currentUserUID = null;
 
-    // reCAPTCHA 설정
-    const recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-      size: 'normal',
-      callback: () => {
-        sendCodeBtn.disabled = false;
-      },
-      'expired-callback': () => {
-        sendCodeBtn.disabled = true;
-      }
-    });
-    recaptchaVerifier.render();
+    firebase.auth().signInAnonymously()
+      .then(userCredential => {
+        currentUserUID = userCredential.user.uid;
+        loadSeatsRealtime();
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        setInterval(autoClearReservations, 60 * 1000); // 1분마다 초기화 시도
+      })
+      .catch(error => {
+        console.error("익명 로그인 실패:", error);
+        alert("인증 실패: 페이지를 새로고침 해주세요.");
+      });
 
-    sendCodeBtn.onclick = () => {
-      const phoneNumber = phoneNumberInput.value.trim();
-      if (!phoneNumber) {
-        alert('휴대폰 번호를 입력하세요.');
+    function getTodayStr() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function checkReservationAllowed() {
+      const now = new Date();
+      const day = now.getDay(); // 0:일 ~ 6:토
+      const hour = now.getHours();
+      const min = now.getMinutes();
+      const totalMin = hour * 60 + min;
+
+      if (day === 0 || day === 6) return false; // 주말 금지
+
+      const morningStart = 10 * 60;
+      const morningEnd = 11 * 60;
+      if (totalMin >= morningStart && totalMin < morningEnd) return true;
+
+      if ([1, 3, 5].includes(day)) {
+        const eveningStart = 19 * 60;
+        const eveningEnd = 20 * 60;
+        if (totalMin >= eveningStart && totalMin < eveningEnd) return true;
+      } else if ([2, 4].includes(day)) {
+        const eveningStart = 20 * 60;
+        const eveningEnd = 21 * 60;
+        if (totalMin >= eveningStart && totalMin < eveningEnd) return true;
+      }
+
+      return false;
+    }
+
+    function loadSeatsRealtime() {
+      const todayStr = getTodayStr();
+      const seatsRef = db.collection("reservations").doc(todayStr).collection("seats");
+      seatsRef.onSnapshot(snapshot => {
+        const reservedSeats = {};
+        snapshot.forEach(doc => {
+          reservedSeats[doc.id] = doc.data();
+        });
+        renderSeats(reservedSeats);
+      });
+    }
+
+    function renderSeats(reservedSeats) {
+      container.innerHTML = "";
+      const allowed = checkReservationAllowed();
+
+      seatRows.forEach(row => {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "row";
+
+        row.forEach(seatNum => {
+          const seatDiv = document.createElement("div");
+          seatDiv.className = "seat";
+          seatDiv.dataset.number = seatNum;
+          seatDiv.textContent = seatNum;
+
+          if (!allowed) {
+            seatDiv.classList.add("disabled");
+          }
+
+          if (reservedSeats[seatNum]) {
+            seatDiv.classList.add("reserved");
+            seatDiv.textContent = reservedSeats[seatNum].name;
+            seatDiv.dataset.name = reservedSeats[seatNum].name;
+            seatDiv.dataset.pw = reservedSeats[seatNum].pw;
+            seatDiv.dataset.uid = reservedSeats[seatNum].uid;
+          }
+
+          seatDiv.addEventListener("click", () => reserveSeat(seatDiv, allowed));
+          rowDiv.appendChild(seatDiv);
+        });
+
+        container.appendChild(rowDiv);
+      });
+    }
+
+    async function reserveSeat(div, allowed) {
+      const seatNum = div.dataset.number;
+      const todayStr = getTodayStr();
+      const seatsRef = db.collection("reservations").doc(todayStr).collection("seats");
+
+      if (div.classList.contains("reserved")) {
+        const inputPw = prompt("예약 취소를 위해 비밀번호 4자리를 입력하세요:");
+        if (inputPw === div.dataset.pw) {
+          await seatsRef.doc(seatNum).delete();
+          alert("예약이 취소되었습니다.");
+        } else {
+          alert("비밀번호가 틀렸습니다.");
+        }
         return;
       }
-      sendCodeBtn.disabled = true;
-      authStatus.textContent = '인증번호 전송 중...';
 
-      firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
-        .then((result) => {
-          confirmationResult = result;
-          authStatus.textContent = '인증번호가 전송되었습니다.';
-          verificationCodeContainer.style.display = 'block';
-        })
-        .catch((error) => {
-          console.error(error);
-          authStatus.textContent = '인증번호 전송 실패. 다시 시도해주세요.';
-          sendCodeBtn.disabled = false;
-        });
-    };
+      if (!allowed) {
+        alert("지금은 예약 시간이 아닙니다.");
+        return;
+      }
 
-    verifyCodeBtn.onclick = () => {
-      const code = verificationCodeInput.value.trim();
-      if (!code) {
-        alert('인증번호를
+      const snapshot = await seatsRef.get();
+      let alreadyReserved = null;
+      snapshot.forEach(doc => {
+        if (doc.data().uid === currentUserUID) {
+          alreadyReserved = doc.id;
+        }
+      });
+
+      if (alreadyReserved) {
+        alert(`이미 예약한 자리가 있습니다. (좌석 번호: ${alreadyReserved})`);
+        return;
+      }
+
+      const name = prompt("예약자 이름을 입력하세요:");
+      if (!name) return alert("이름을 입력해야 예약할 수 있습니다.");
+
+      let pw;
+      do {
+        pw = prompt("예약 비밀번호 4자리를 숫자로 입력하세요:");
+        if (pw === null) return alert("비밀번호를 입력해야 예약할 수 있습니다.");
+      } while (!/^\d{4}$/.test(pw));
+
+      await seatsRef.doc(seatNum).set({ name, pw, uid: currentUserUID });
+      alert("예약이 완료되었습니다.");
+    }
+
+    function updateCountdown() {
+      const now = new Date();
+      const day = now.getDay();
+      const hour = now.getHours();
+      const min = now.getMinutes();
+      const sec = now.getSeconds();
+      const totalMinNow = hour * 60 + min;
+      const totalSecNow = totalMinNow * 60 + sec;
+
+      const times = [];
+
+      if (day >= 1 && day <= 5) {
+        const morningStart = 10 * 60;
+        if (totalMinNow < morningStart) times.push(morningStart);
+      }
+
+      if ([1, 3, 5].includes(day)) {
+        const eveningStart = 19 * 60;
+        if (totalMinNow < eveningStart) times.push(eveningStart);
+      } else if ([2, 4].includes(day)) {
+        const eveningStart = 20 * 60;
+        if (totalMinNow < eveningStart) times.push(eveningStart);
+      }
+
+      const countdown = document.getElementById("countdown");
+
+      if (times.length === 0) {
+        countdown.textContent = "지금은 예약이 불가능한 시간입니다.";
+        return;
+      }
+
+      const next = Math.min(...times);
+      const remaining = next * 60 - totalSecNow;
+
+      const hours = Math.floor(remaining / 3600);
+      const minutes = Math.floor((remaining % 3600) / 60);
+      const seconds = remaining % 60;
+
+      countdown.textContent =
+        `예약 가능까지 ${hours > 0 ? hours + "시간 " : ""}${minutes}분 ${seconds}초 남았습니다`;
+    }
+
+    async function autoClearReservations() {
+      const now = new Date();
+      const day = now.getDay();
+      const hour = now.getHours();
+      const min = now.getMinutes();
+
+      if (day === 0 || day === 6) return; // 주말은 초기화 없음
+
+      if (hour === 11 && min === 30) {
+        await clearAllReservations();
+      }
+      if (hour === 21 && min === 30) {
+        await clearAllReservations();
+      }
+    }
+
+    async function clearAllReservations() {
+      const todayStr = getTodayStr();
+      const seatsRef = db.collection("reservations").doc(todayStr).collection("seats");
+      const snapshot = await seatsRef.get();
+
+      const batch = db.batch();
+      snapshot.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      alert("예약 기록이 초기화되었습니다.");
+    }
+  </script>
+
+  <table>
+    <thead>
+      <tr>
+        <th>수업시간</th>
+        <th>월</th>
+        <th>화</th>
+        <th>수</th>
+        <th>목</th>
+        <th>금</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>오전</td>
+        <td>10시</td>
+        <td>10시</td>
+        <td>10시</td>
+        <td>10시</td>
+        <td>10시</td>
+      </tr>
+      <tr>
+        <td>오후</td>
+        <td>7시 30분</td>
+        <td>8시 30분</td>
+        <td>7시 30분</td>
+        <td>8시 30분</td>
+        <td>7시 30분</td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div id="notice">
+    <ul>
+      <li>스피닝 자리예약은 수업 30분 전부터 가능합니다.</li>
+      <li>수업시간에 늦을 경우 빈자리에 착석 가능합니다.</li>
+      <li>--------------------------------
